@@ -1,4 +1,4 @@
-import { View, Text, Image, StyleSheet, TextInput, Button } from "react-native";
+import { View, Text, Image, StyleSheet, TextInput, Button, ScrollView } from "react-native";
 import { useState, useContext } from "react";
 import { storeData } from "../helpers/asyncStorage";
 import { AuthContext } from "../helpers/asyncStorage";
@@ -29,7 +29,7 @@ export default function Onboarding({ navigation: { navigate } }) {
 
   return (
     <>
-      <View style={styles.main}>
+      <ScrollView style={styles.main}>
         <View style={styles.header}>
           <Image source={require("../assets/Images/Logo.png")} />
         </View>
@@ -64,7 +64,7 @@ export default function Onboarding({ navigation: { navigate } }) {
             onPress={onButtonPress}
           />
         </View>
-      </View>
+      </ScrollView>
     </>
   );
 }

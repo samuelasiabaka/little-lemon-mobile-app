@@ -86,11 +86,6 @@ export default function App() {
     })();
   }, []);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     await removeItem("email");
-  //   })();
-  // });
 
   if (state?.isLoading) {
     return <SplashScren />;
