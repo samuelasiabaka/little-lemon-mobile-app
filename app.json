@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "little-lemon-mobile-app",
-    "slug": "little-lemon-mobile-app",
+    "name": "ReactCap",
+    "slug": "ReactCap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

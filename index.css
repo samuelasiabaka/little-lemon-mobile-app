@@ -1,0 +1,5 @@
+@font-face {
+  font-family: "Regular";   /*Can be any text*/
+  src: local("Karla-Regular"),
+    url("./assets/fonts/Karla-Regular.ttf") format("truetype");
+}
