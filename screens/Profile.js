@@ -1,32 +1,35 @@
-import React, { useState, useContext, useCallback, useEffect } from 'react';
-import { View, ScrollView, Text, Image, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
-import { AuthContext } from '../context/AuthContextCreate';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { validateEmail, validateName, validateNumber } from "../util"
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
+import { Text, View, StyleSheet, ScrollView, SafeAreaView } from "react-native";
+import { Avatar, Button, TextInput, Checkbox } from "react-native-paper";
+import {
+  retrieveData,
+  storeData,
+  multiSet,
+  clrerAll,
+} from "../helpers/asyncStorage";
+import { useEffect, useState, useContext } from "react";
+import { MaskedTextInput } from "react-native-mask-text";
 import * as ImagePicker from "expo-image-picker";
-//import "../index.css";
+import { AuthContext } from "../helpers/asyncStorage";
 
+export default function ProfileScreen() {
+  const { signOut } = useContext(AuthContext);
 
-const greeting = "Let us get to know you";
+  const [firstName, onFirstNameChange] = useState("");
+  const [lastName, onLastNameChange] = useState("");
+  const [email, onEmailChange] = useState("");
+  const [phoneNumber, onPhoneNumberChange] = useState();
+  const [orderStatuses, onOrderStatusesChange] = useState(true);
+  const [passwordChanges, onPasswordChangesChange] = useState(true);
+  const [specialOffers, onSpecialOffersChange] = useState(true);
+  const [newsletter, onNewsletterChange] = useState(true);
+  const [image, setImage] = useState(null);
 
-const Profile = () => {
-  const { logOut } = useContext(AuthContext);
+  const removeImage = async () => {
+    await setImage(null);
+  };
 
-  const [input, setInput] = useState({
-    avatar: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-  });
-
-  useEffect(() => {
-    readAsyncStorage();
-  }, []);
-
-  const selectPicture = async () => {
+  const pickImage = async () => {
+    // No permissions request is necessary for launching the image library
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
@@ -34,426 +37,297 @@ const Profile = () => {
       quality: 1,
     });
 
+    console.log(result);
+
     if (!result.canceled) {
-      setInput((prev) => ({ ...prev, avatar: result.assets[0].uri }));
+      setImage(result.assets[0].uri);
     }
   };
 
-  const removePicture = () => {
-    setInput((prev) => ({ ...prev, avatar: "" }));
-  };
-  
-  const clearCurrentUser = async () => {
-    await AsyncStorage.clear();
-    logOut();
-  };
-
-  const readAsyncStorage = async () => {
-    const avatar = (await AsyncStorage.getItem("AVATAR")) ?? "";
-    const firstName = (await AsyncStorage.getItem("FIRSTNAME")) ?? "";
-    const lastName = (await AsyncStorage.getItem("LASTNAME")) ?? "";
-    const email = (await AsyncStorage.getItem("EMAIL")) ?? "";
-    const phoneNumber = (await AsyncStorage.getItem("PHONE_NUMBER")) ?? "";
-    setInput({
-      avatar: avatar,
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      phoneNumber: phoneNumber,
-    });
-  };
-
-  saveInputToAsyncStorage = async () => {
-    if (!validateNumber(input.phoneNumber)) {
-      Alert.alert(
-        "Correct Data:",
-        "The phone number should be 10 characters long."
-      );
-      return;
-    } else if (!validateEmail(input.email)) {
-      Alert.alert("Correct Data:", "The E-Mail is not well formed.");
-    }
-    await AsyncStorage.setItem("AVATAR", input.avatar);
-    await AsyncStorage.setItem("FIRSTNAME", input.firstName);
-    await AsyncStorage.setItem("LASTNAME", input.lastName);
-    await AsyncStorage.setItem("EMAIL", input.email);
-    await AsyncStorage.setItem("PHONE_NUMBER", input.phoneNumber);
-    Alert.alert("Success", "Successfully saved changes!");
+  const saveAllData = async () => {
+    const afirstName = ["firstName", firstName];
+    const alastName = ["lastName", lastName];
+    const aemail = ["email", email];
+    const aphoneNumber = ["phoneNumber", phoneNumber];
+    const aorderStatuses = ["orderStatuses", JSON.stringify(orderStatuses)];
+    const apasswordChanges = [
+      "passwordChanges",
+      JSON.stringify(passwordChanges),
+    ];
+    const aspecialOffers = ["specialOffers", JSON.stringify(specialOffers)];
+    const anewsletter = ["newsletter", JSON.stringify(newsletter)];
+    const aimage = ["image", image ? image : JSON.stringify(null)];
+    const ars = [
+      afirstName,
+      alastName,
+      aemail,
+      aphoneNumber,
+      aorderStatuses,
+      apasswordChanges,
+      aspecialOffers,
+      anewsletter,
+      aimage,
+    ];
+    await multiSet(ars);
   };
 
-  const properCase = (string) => {
-    if (string) {
-      return string.charAt(0).toUpperCase();
-    } else {
-      return "";
-    }
+  const logOff = () => {
+    clrerAll();
+    signOut();
   };
 
-  const onFirstnameChanged = (firstName) => {
-    if (firstName === "" || validateName(firstName)) {
-      setInput((prev) => ({ ...prev, firstName: firstName }));
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      let fname = await retrieveData("firstName");
+      let aemail = await retrieveData("email");
+      let alastName = await retrieveData("lastName");
+      let aphoneNumber = await retrieveData("phoneNumber");
+      let aorderStatuses = await retrieveData("orderStatuses");
+      let apasswordChanges = await retrieveData("passwordChanges");
+      let aspecialOffers = await retrieveData("specialOffers");
+      let anewsletter = await retrieveData("newsletter");
+      let aimage = await retrieveData("image");
+      fname
+        ? onFirstNameChange(fname)
+        : console.log("Failed to fetch first name form async storage");
 
-  const onLastnameChanged = (lastName) => {
-    if (lastName === "" || validateName(lastName)) {
-      setInput((prev) => ({ ...prev, lastName: lastName }));
-    }
-  };
+      aemail
+        ? onEmailChange(aemail)
+        : console.log("Failed for fetch email from async storage");
 
-  const onEmailChanged = (email) => setInput((prev) => ({ ...prev, email: email }));
+      alastName
+        ? onLastNameChange(alastName)
+        : console.log("Failed to fetch last Name from async storage");
 
-  const onPhoneNumberChanged = (phoneNumber) => setInput((prev) => ({ ...prev, phoneNumber: phoneNumber }));
-
-
-  const getIsFormValid = () => {
-    return (
-      validateName(input.firstName) &&
-      validateName(input.lastName) &&
-      validateEmail(input.email) &&
-      validateNumber(input.phoneNumber)
-    );
-  };
-
-  //Font Stuff
-  const [fontsLoaded] = useFonts({
-    "Karla-Regular": require("../assets/fonts/Karla-Regular.ttf"),
-    "MarkaziText-Regular": require("../assets/fonts/MarkaziText-Regular.ttf"),
-  });
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-  if (!fontsLoaded) {
-    return null;
-  };
-
-  
-
-  return(
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      onLayout={onLayoutRootView}
+      aphoneNumber ? onPhoneNumberChange(aphoneNumber) : null;
+      aorderStatuses ? onOrderStatusesChange(JSON.parse(aorderStatuses)) : null;
+      apasswordChanges
+        ? onPasswordChangesChange(JSON.parse(apasswordChanges))
+        : null;
+      aspecialOffers ? onSpecialOffersChange(JSON.parse(aspecialOffers)) : null;
+      anewsletter ? onNewsletterChange(JSON.parse(anewsletter)) : null;
+      aimage ? setImage(aimage) : null;
+    })();
+  }, []);
+  return (
+    <ScrollView
+      style={styles.main}
+      showsHorizontalScrollIndicator={false}
+      showsVerticalScrollIndicator={false}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView style={styles.container}>
-          {/* <View style={styles.header}>
-            <Image
-              style={styles.logo}
-              source={require("../assets/littleLemonLogo.png")}
-              accessible={true}
-              accessibilityLabel={"Little Lemon Logo"}
-            />
-          </View> */}
-          <View style={styles.content}>
-            <Text style={styles.title}>Personal Information</Text>
-            <View style={styles.sectionMargin}>
-              <Text style={styles.inputTitle}>Avatar</Text>
-              <View style={styles.avatarContainer}>
-                {input.avatar ? (
-                  <Image source={{ uri: input.avatar }} style={styles.avatarImage} />
-                ) : (
-                  <View style={styles.avatarEmpty}>
-                    <Text style={styles.avatarEmptyText}>
-                      {input.firstName && Array.from(input.firstName)[0]}
-                      {input.lastName && Array.from(input.lastName)[0]}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.avatarButtons}>
-                  <Pressable
-                    style={styles.changeBtn}
-                    title="Pick an image from camera roll"
-                    onPress={selectPicture}
-                  >
-                    <Text style={styles.saveBtnText}>Change</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.removeBtn}
-                    title="Pick an image from camera roll"
-                    onPress={removePicture}
-                  >
-                    <Text style={styles.discardBtnText}>Remove</Text>
-                  </Pressable>
-                </View>
-              </View>
-              <Text
-                style={[
-                  styles.text,
-                  validateName(input.firstName) ? "" : styles.error,
-                ]}
-              >
-                First Name
-              </Text>
-              <TextInput
-                style={styles.inputBox}
-                value={input.firstName}
-                onChangeText={onFirstnameChanged}
-                placeholder={"First Name"}
-              />
-              <Text
-                style={[
-                  styles.text,
-                  validateName(input.lastName) ? "" : styles.error,
-                ]}
-              >
-                Last Name
-              </Text>
-              <TextInput
-                style={styles.inputBox}
-                value={input.lastName}
-                onChangeText={onLastnameChanged}
-                placeholder={"Last Name"}
-              />
-              <Text
-                style={[
-                  styles.text,
-                  validateEmail(input.email) ? "" : styles.error,
-                ]}
-              >
-                Email
-              </Text>
-              <TextInput
-                style={styles.inputBox}
-                value={input.email}
-                keyboardType="email-address"
-                onChangeText={onEmailChanged}
-                placeholder={"Email"}
-              />
-              <Text
-                style={[
-                  styles.text,
-                  validateNumber(input.phoneNumber) ? "" : styles.error,
-                ]}
-              >
-                Phone number (10 digit)
-              </Text>
-              <TextInput
-                style={styles.inputBox}
-                value={input.phoneNumber}
-                keyboardType="phone-pad"
-                onChangeText={onPhoneNumberChanged}
-                placeholder={"Phone number"}
-              />
-            </View>
-            <Pressable 
-              style={styles.btn}
-              onPress={clearCurrentUser}
-            >
-              <Text style={styles.btntext}>Log out</Text>
-            </Pressable>
-            <View style={styles.buttons}>
-              <Pressable 
-                style={styles.discardBtn} 
-                onPress={readAsyncStorage}
-                >
-                <Text style={styles.discardBtnText}>Discard changes</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.saveBtn, getIsFormValid() ? "" : styles.btnDisabled]}
-                onPress={saveInputToAsyncStorage}
-                disabled={!getIsFormValid()}
-              >
-                <Text style={styles.saveBtnText}>Save changes</Text>
-              </Pressable>
-            </View>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      <Text style={styles.personalInfo}>Personal Information</Text>
+      <Text style={styles.avatarText}>Avatar</Text>
+      <View style={styles.avatarView}>
+        {image && image !== null ? (
+          <Avatar.Image size={80} source={{ uri: image }} />
+        ) : (
+          <Avatar.Text size={80} label="JD" />
+        )}
+        <View>
+          <Button
+            style={styles.avatarButton}
+            mode="text"
+            compact={true}
+            buttonColor="#495E57"
+            textColor="white"
+            onPress={pickImage}
+          >
+            Change
+          </Button>
+        </View>
+        <View>
+          <Button
+            style={styles.avatarButton}
+            mode="outlined"
+            compact={true}
+            textColor="#777"
+            onPress={removeImage}
+          >
+            Remove
+          </Button>
+        </View>
+      </View>
+
+      {/* Form View */}
+
+      <View style={styles.formView}>
+        <Text style={styles.formText}>First Name</Text>
+        <TextInput
+          style={styles.formTextInput}
+          mode="outlined"
+          textColor="#777"
+          value={firstName}
+          onChangeText={onFirstNameChange}
+        />
+        <Text style={styles.formText}>Last Name</Text>
+        <TextInput
+          style={styles.formTextInput}
+          mode="outlined"
+          textColor="#777"
+          value={lastName}
+          onChangeText={onLastNameChange}
+        />
+        <Text style={styles.formText}>Email</Text>
+        <TextInput
+          style={styles.formTextInput}
+          mode="outlined"
+          textColor="#777"
+          value={email}
+          onChangeText={onEmailChange}
+        />
+        <Text style={styles.formText}>Phone Number</Text>
+        <TextInput
+          style={styles.formTextInput}
+          mode="outlined"
+          textColor="#777"
+          render={(props) => (
+            <MaskedTextInput mask="+1 (999) 999-999" {...props} />
+          )}
+          value={phoneNumber}
+          onChangeText={onPhoneNumberChange}
+          keyboardType="number-pad"
+        />
+      </View>
+
+      {/* Email Notifications */}
+
+      <View style={styles.emailNotificationsView}>
+        <Text style={styles.emailNotificationsText}>Email Notifications</Text>
+        <View style={styles.checkboxView}>
+          <Checkbox
+            status={orderStatuses ? "checked" : "unchecked"}
+            onPress={() => onOrderStatusesChange(!orderStatuses)}
+            color="green"
+            uncheckedColor="#777"
+          />
+          <Text style={styles.checkboxText}>Order Statuses</Text>
+        </View>
+        <View style={styles.checkboxView}>
+          <Checkbox
+            status={passwordChanges ? "checked" : "unchecked"}
+            onPress={() => onPasswordChangesChange(!passwordChanges)}
+            color="green"
+            uncheckedColor="#777"
+          />
+          <Text style={styles.checkboxText}>Password Changes</Text>
+        </View>
+        <View style={styles.checkboxView}>
+          <Checkbox
+            status={specialOffers ? "checked" : "unchecked"}
+            onPress={() => onSpecialOffersChange(!specialOffers)}
+            color="green"
+            uncheckedColor="#777"
+          />
+          <Text style={styles.checkboxText}>Special Offers</Text>
+        </View>
+        <View style={styles.checkboxView}>
+          <Checkbox
+            status={newsletter ? "checked" : "unchecked"}
+            onPress={() => onNewsletterChange(!newsletter)}
+            color="green"
+            uncheckedColor="#777"
+          />
+          <Text style={styles.checkboxText}>Newsletter</Text>
+        </View>
+      </View>
+      <View style={styles.logoutView}>
+        <Button buttonColor="#F4ce14" textColor="black" onPress={logOff}>
+          Log Out
+        </Button>
+      </View>
+
+      {/* Change Buttons */}
+
+      <View style={styles.changeButtons}>
+        <Button
+          style={styles.changeButton}
+          mode="outlined"
+          compact={true}
+          textColor="#777"
+        >
+          Discard Changes
+        </Button>
+        <Button
+          style={styles.changeButton}
+          mode="text"
+          compact={true}
+          buttonColor="#495E57"
+          textColor="white"
+          onPress={saveAllData}
+        >
+          Save Changes
+        </Button>
+      </View>
+    </ScrollView>
   );
-}; 
-    
-export default Profile;
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
+  main: {
+    // flex: 1,
+    margin: 10,
   },
-  header: {
-    fontFamily: "Karla-Regular",
-    fontSize: 38,
-    paddingTop: 10,
-    paddingBottom: 10,
+  personalInfo: {
+    fontWeight: "bold",
+    fontSize: 20,
+    marginTop: 20,
+    // color: "#777",
+  },
+  avatarText: {
+    color: "gray",
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  avatarView: {
+    // flex: 0.3,
     flexDirection: "row",
-    justifyContent: "center"
   },
-  logo: {
-    height: 50,
-    width: 150,
-    resizeMode: "contain",
+  avatarButton: {
+    marginTop: 30,
+    marginLeft: 10,
+    width: 120,
+    height: 40,
   },
-  avatarContainer: {
+  formView: {
+    flex: 0.85,
+    marginTop: 10,
+  },
+  formTextInput: {
+    height: 40,
+    // color: "#777",
+  },
+  formText: {
+    marginTop: 2,
+    color: "#777",
+  },
+  checkboxView: {
     flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 10,
   },
-  avatarImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+  checkboxText: {
+    marginTop: 9,
+    color: "#777",
+    fontSize: 15,
   },
-  avatarEmpty: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "#0b9a6a",
+
+  emailNotificationsView: {
+    flex: 0.7,
+    marginTop: 10,
+  },
+  emailNotificationsText: {
+    fontWeight: "bold",
+    fontSize: 20,
+    marginTop: 20,
+  },
+  logoutView: {
+    marginTop: 10,
+  },
+  changeButtons: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarEmptyText: {
-    fontSize: 32,
-    color: "#FFFFFF",
-    fontWeight: "bold",
-  },
-  avatarButtons: {
-    flexDirection: "row",
-  },
-  stretch: {
-    resizeMode: 'contain',
-    height: 70,
-    width: 400,
-    backgroundColor: '#aaa',
-  },
-  btn: {
-    backgroundColor: "#f4ce14",
-    borderRadius: 9,
-    alignSelf: "stretch",
-    marginVertical: 18,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#cc9a22",
-  },
-  btntext: {
-    fontSize: 22,
-    color: "#3e524b",
-    fontFamily: "Karla-Regular",
-    alignSelf: "center",
-  },
-  btnDisabled: {
-    backgroundColor: "#98b3aa",
-  },
-  button: {
-    fontSize: 18,
-    padding: 6,
-    marginVertical: 26,
-    margin: 30,
-    marginLeft: 260,
-    backgroundColor: '#aaa',
-    borderRadius: 8
-  },
-  buttonText: {
-    color: '#333333',
-    textAlign: 'center',
-    fontSize: 24,
-  },
-  top: {
-    paddingTop: 50,
-    height: 140,
-    width: 400,
-    backgroundColor: '#aaa',
-  },
-  footer: {
-    marginTop: 60,
-    paddingTop: 30,
-    height: 170,
-    width: 400,
-    backgroundColor: '#ccc',
-  },
-  input: {
-    height: 50,
-    width: 300,
+  changeButton: {
+    width: 150,
     margin: 10,
-    borderWidth: 2,
-    borderRadius: 6,
-    padding: 10,
-    fontSize: 24,
-  },
-  inputBox: {
-    alignSelf: "stretch",
-    marginTop: 4,
-    marginBottom: 10,
-    borderWidth: 1,
-    padding: 10,
-    fontSize: 16,
-    borderRadius: 9,
-    borderColor: "#dfdfe5",
-  },
-  title: {
-    //fontFamily: "Regular",
-    fontSize: 28,
-    paddingBottom: 10,
-  },
-  inputTitle:{
-    fontSize: 16,
-    color: "#333",
-  },
-  error: {
-    color: "#d14747",
-    fontWeight: "bold",
-  },
-  sectionMargin: {
-    marginBottom: 18,
-  },
-  content: {
-    flex: 0.7,
-    marginLeft: 20,
-    marginRight: 20,
-  },
-  buttons: {
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 60,
-  },
-  changeBtn: {
-    backgroundColor: "#495e57",
-    borderRadius: 9,
-    marginHorizontal: 18,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#3f554d",
-  },
-  removeBtn: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 9,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#83918c",
-  },
-  saveBtn: {
-    flex: 1,
-    backgroundColor: "#495e57",
-    borderRadius: 9,
-    alignSelf: "stretch",
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#3f554d",
-  },
-  saveBtnText: {
-    fontSize: 18,
-    color: "#FFFFFF",
-    alignSelf: "center",
-    fontFamily: "Karla-Regular",
-  },
-  discardBtn: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 9,
-    alignSelf: "stretch",
-    marginRight: 18,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#83918c",
-  },
-  discardBtnText: {
-    fontSize: 18,
-    color: "#3e524b",
-    alignSelf: "center",
-    fontFamily: "Karla-Regular",
   },
 });

@@ -1,108 +1,130 @@
-import React, { useState, useEffect, useReducer, useMemo } from 'react';
-import { Alert } from 'react-native';
-import Onboarding from './screens/Onboarding';
-import Profile from './screens/Profile';
-import Home from './screens/Home.js'
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from './context/AuthContextCreate';
-import useUpdate from './useUpdate';
-import SplashScreen from './screens/SplashScreen';
-import { useFonts } from "expo-font";
+import { StatusBar } from "expo-status-bar";
+import { StyleSheet, Text, View } from "react-native";
+import Onboarding from "./screens/Onboarding";
+import ProfileScreen from "./screens/Profile";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { retrieveData, removeItem } from "./helpers/asyncStorage";
+import { useEffect, useState, useReducer, createContext, useMemo } from "react";
+import SplashScren from "./screens/SplashScreen";
+import HomeScreen from "./screens/HomeScreen";
+import { AuthContext } from "./helpers/asyncStorage";
+import { HeaderImage, HeaderNoImage } from "./components/Header";
+import { createItemsTable } from "./helpers/db";
 
 const Stack = createNativeStackNavigator();
-const temp = true;
 
-export default function App({ navigation }) {
+export default function App() {
   const [state, dispatch] = useReducer(
     (prevState, action) => {
       switch (action.type) {
-        case "loggedIn":
+        case "ON_BOARD":
           return {
-            isOnboardingCompleted: true,
+            ...prevState,
+            isLoading: false,
+            isOnboardingCompleated: true,
+          };
+        case "SET_LOADING_FALSE":
+          return {
+            ...prevState,
             isLoading: false,
           };
-        case "loggedOut":
+        case "SIGN_OUT":
           return {
-            isOnboardingCompleted: false,
+            ...prevState,
             isLoading: false,
+            isOnboardingCompleated: false,
+          };
+        case "SET_IMAGE":
+          console.log("Setting image");
+          console.log(action.data);
+          return {
+            ...prevState,
+            image: action.data,
           };
       }
     },
     {
       isLoading: true,
-      isOnboardingCompleted: false,
+      isOnboardingCompleated: false,
+      image: null,
     }
   );
-  
-  const authContextProvider = useMemo(
+
+  const authContext = useMemo(
     () => ({
-      logIn: () => {
-        dispatch({ type: "loggedIn" });
+      onBoard: async (data) => {
+        dispatch({ type: "ON_BOARD" });
       },
-      logOut: () => {
-        dispatch({ type: "loggedOut" });
+      setLoadingFalse: async () => {
+        dispatch({ type: "SET_LOADING_FALSE" });
+      },
+      signOut: async () => {
+        dispatch({ type: "SIGN_OUT" });
+      },
+      setImage: async (data) => {
+        dispatch({ type: "SET_IMAGE", data: data });
       },
     }),
     []
   );
 
-  ToBoolean = (string) => {
-    if (string === null) {
-      return false;
-    } else {
-      return string === "true";
-    }
-  };
-
-  const readLoginState = async () => {
-    if (ToBoolean(await AsyncStorage.getItem("IS_LOGGED_IN"))) {
-      dispatch({ type: "loggedIn" });
-    } else {
-      dispatch({ type: "loggedOut" });
-    }
-  };
-
   useEffect(() => {
-    readLoginState();
+    (async () => {
+      const userEmail = await retrieveData("email");
+      const aiimage = await retrieveData("image");
+
+      if (userEmail) {
+        dispatch({ type: "ON_BOARD" });
+      }
+
+      if (aiimage) {
+        dispatch({ type: "SET_IMAGE", data: aiimage });
+      }
+
+      dispatch({ type: "SET_LOADING_FALSE" });
+    })();
   }, []);
 
-  // // This effect only runs when the preferences state updates, excluding initial mount
-  // useUpdate(() => {
+  // useEffect(() => {
   //   (async () => {
-  //     // Every time there is an update on the preference state, we persist it on storage
-  //     // The exercise requierement is to use multiSet API
-  //     const keyValues = Object.entries(userPref).map((entry) => {
-  //       return [entry[0], String(entry[1])];
-  //     });
-  //     try {
-  //       await AsyncStorage.multiSet(keyValues);
-  //     } catch (e) {
-  //       Alert.alert(`An error occurred: ${e.message}`);
-  //     }
+  //     await removeItem("email");
   //   })();
-  // }, [userPref]);
+  // });
 
-  if (state.isLoading) {
-    // We haven't finished reading from AsyncStorage yet
-    return <SplashScreen />;
+  if (state?.isLoading) {
+    return <SplashScren />;
   }
   return (
-    <AuthContext.Provider value={authContextProvider}>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Loading">
-          { state.isOnboardingCompleted ? (
+    <NavigationContainer>
+      <AuthContext.Provider value={authContext}>
+        <Stack.Navigator>
+          {state?.isOnboardingCompleated ? (
             <>
-              <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
-              <Stack.Screen name="Profile" component={Profile} />
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{
+                  header: (props) => <HeaderNoImage {...props} />,
+                }}
+              />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
             </>
           ) : (
-            // User is NOT signed in
-            <Stack.Screen name="Onboarding" component={Onboarding} options={{ headerShown: false }} />
+            <Stack.Screen name="Onboarding" component={Onboarding} />
           )}
         </Stack.Navigator>
-      </NavigationContainer>
-    </AuthContext.Provider>
+      </AuthContext.Provider>
+    </NavigationContainer>
   );
 }
+// }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
